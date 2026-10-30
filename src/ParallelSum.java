@@ -5,7 +5,7 @@ import java.util.concurrent.*;
 
 public class ParallelSum {
 
-    static long countSum(int[] numbers, int indexStart, int indexFinish) {
+    static long sumRange(int[] numbers, int indexStart, int indexFinish) {
         long sum = 0;
         for (int i = indexStart; i < indexFinish; i++) {
             sum += numbers[i];
@@ -13,33 +13,33 @@ public class ParallelSum {
         return sum;
     }
 
-    static long countSumExecutor(int[] numbers, int cores) throws ExecutionException, InterruptedException {
-        try (ExecutorService executorService = Executors.newFixedThreadPool(cores)) {
-            int piesSize = numbers.length / cores;
+    static long countSumExecutor(int[] numbers, int threads) throws ExecutionException, InterruptedException {
+        try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+            int chunkSize = numbers.length / threads;
             List<Future<Long>> futureList = new ArrayList<>();
-            for (int i = 0; i < cores; i++) {
-                int start = i * piesSize;
-                int end = (i == cores - 1) ? numbers.length : start + piesSize;
-                futureList.add(executorService.submit(() -> countSum(numbers, start, end)));
+            for (int i = 0; i < threads; i++) {
+                int start = i * chunkSize;
+                int end = (i == threads - 1) ? numbers.length : start + chunkSize;
+                futureList.add(executorService.submit(() -> sumRange(numbers, start, end)));
             }
 
             long sum = 0;
 
-            for (Future<Long> longFuture : futureList) {
-                sum += longFuture.get();
+            for (Future<Long> future : futureList) {
+                sum += future.get();
             }
             return sum;
         }
     }
 
-    static long countSumCompletableFuture(int[] numbers, int cores) {
-        try (ExecutorService executorService = Executors.newFixedThreadPool(cores)) {
-            int piesSize = numbers.length / cores;
+    static long countSumCompletableFuture(int[] numbers, int threads) {
+        try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+            int piesSize = numbers.length / threads;
             List<CompletableFuture<Long>> futureList = new ArrayList<>();
-            for (int i = 0; i < cores; i++) {
+            for (int i = 0; i < threads; i++) {
                 int start = i * piesSize;
-                int end = (i == cores - 1) ? numbers.length : start + piesSize;
-                futureList.add(CompletableFuture.supplyAsync(() -> countSum(numbers, start, end), executorService));
+                int end = (i == threads - 1) ? numbers.length : start + piesSize;
+                futureList.add(CompletableFuture.supplyAsync(() -> sumRange(numbers, start, end), executorService));
             }
 
             return CompletableFuture
@@ -51,17 +51,15 @@ public class ParallelSum {
         }
     }
 
-    static void main(String[] args) throws ExecutionException, InterruptedException {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
         int size = 10_000_000;
-        int cores;
+        int cores = Runtime.getRuntime().availableProcessors();
         int[] numbers = new Random()
                 .ints(size, 1, 101).toArray();
 
-        cores = Runtime.getRuntime().availableProcessors();
+        System.out.println(sumRange(numbers, 0, numbers.length));
 
-        System.out.println(countSum(numbers, 0, numbers.length));
-
-        System.out.println(countSumExecutor(numbers, cores));
+        System.out.println(countSumExecutor(numbers, 0));
 
         System.out.println(countSumCompletableFuture(numbers, cores));
     }
